@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Date, insert
+from sqlalchemy import create_engine, MetaData, Table, Column, String, Date, insert, delete
 
 class SQLAlUtil:
     def __init__(self, username: str, host: str, port: int, database: str = 'travels'):
@@ -40,6 +40,16 @@ class SQLAlUtil:
             )
             result = conn.execute(query)
             return result.fetchone()
+        
+    def delete_travel_by_name(self, travel_name: str):
+        """Delete a travel record by name from the database"""
+        with self.engine.connect() as conn:
+            query = delete(self.travels).where(
+                self.travels.c.name.ilike(travel_name)
+            )
+            result = conn.execute(query)
+            conn.commit()
+            return result.rowcount  # Returns number of rows deleted (1 or 0)
     
     def close(self):
         """Close the database connection"""

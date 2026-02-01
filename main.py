@@ -65,6 +65,14 @@ async def put_travel(travel_name: str, date_str: str | None = None):
         # Create new if not found
         db.insert_to_db(travel_name, travel_date)
         return {"travel_name": travel_name, "date": date_str}
+    
+@app.delete("/travels/{travel_name}")
+async def delete_travel(travel_name: str):
+    travel_name = travel_name.capitalize()
+    num_deleted = db.delete_travel_by_name(travel_name)
+    if num_deleted == 0:
+        raise HTTPException(status_code=404, detail="Delete not successful. Travel not found")
+    return {"message": f"{travel_name} deleted"}
 
 def validate_date_format(date_str: str | None):
     if date_str:
