@@ -1,0 +1,53 @@
+.trip-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9f9f9;
+    border-left: 4px solid #667eea;
+    padding: 15px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.trip-card:hover {
+    background: #f0f0f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.trip-info {
+    flex: 1;
+}
+
+.trip-info h3 {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.trip-date {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.trip-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-action {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    padding: 5px;
+}
+
+.btn-action:hover {
+    transform: scale(1.2);
+}
+
+.btn-delete:active {
+    opacity: 0.7;
+}
