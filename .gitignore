@@ -35,3 +35,6 @@ htmlcov/
 
 # GitHub
 .github
+
+# Node modules
+frontend/node_modules
