@@ -35,10 +35,10 @@ def decode_access_token(token: str):
     """Decode and validate the JWT access token"""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
+        user_id = payload.get("sub")
         if user_id is None:
             return None
-        return user_id
+        return int(user_id)
     
     except JWTError:
         return None

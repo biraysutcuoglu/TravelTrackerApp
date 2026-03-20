@@ -3,6 +3,8 @@ import axios from 'axios';
 import './App.css';
 import TripList from './components/TripList';
 import TripForm from './components/TripForm';
+import Login from './components/Login';
+import Signup from './components/Signup';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -11,13 +13,40 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [editingTrip, setEditingTrip] = useState(null);
     const [error, setError] = useState('');
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [currentView, setCurrentView] = useState('login'); // 'login', 'signup', or 'trips'
+    const [username, setUsername] = useState('');
+
+    // Check if user is already logged in
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const storedUsername = localStorage.getItem('username');
+        if (token && storedUsername) {
+            setIsLoggedIn(true);
+            setUsername(storedUsername);
+            setCurrentView('trips');
+        }
+    }, []);
+
+    // Add Authorization header to axios requests
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        }
+    }, []);
 
     // Fetch all trips
     const fetchTrips = async () => {
         setLoading(true);
         setError('');
         try {
-            const response = await axios.get(`${API_BASE_URL}/trips/`);
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/trips/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             setTrips(response.data);
         } catch (err) {
             setError('Failed to fetch trips. Make sure the API is running on localhost:8000');
@@ -28,8 +57,10 @@ function App() {
     };
 
     useEffect(() => {
-        fetchTrips();
-    }, []);
+        if (isLoggedIn && currentView === 'trips') {
+            fetchTrips();
+        }
+    }, [isLoggedIn, currentView]);
 
     // Add new trip
     const handleAddTrip = async (tripName, date) => {
@@ -38,7 +69,13 @@ function App() {
             const params = { trip_name: tripName };
             if (date) params.date_str = date;
             
-            await axios.post(`${API_BASE_URL}/trips/`, null, { params });
+            const token = localStorage.getItem('token');
+            await axios.post(`${API_BASE_URL}/trips/`, null, { 
+                params,
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             await fetchTrips();
         } catch (err) {
             setError(err.response?.data?.detail || 'Failed to add trip');
@@ -53,7 +90,13 @@ function App() {
             const params = { trip_name: tripName };
             if (date) params.date_str = date;
             
-            await axios.put(`${API_BASE_URL}/trips/${editingTrip.trip_name}`, null, { params });
+            const token = localStorage.getItem('token');
+            await axios.put(`${API_BASE_URL}/trips/${editingTrip.trip_name}`, null, { 
+                params,
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             await fetchTrips();
             setEditingTrip(null);
         } catch (err) {
@@ -68,7 +111,12 @@ function App() {
         
         try {
             setError('');
-            await axios.delete(`${API_BASE_URL}/trips/${tripName}`);
+            const token = localStorage.getItem('token');
+            await axios.delete(`${API_BASE_URL}/trips/${tripName}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             await fetchTrips();
         } catch (err) {
             setError(err.response?.data?.detail || 'Failed to delete trip');
@@ -76,10 +124,73 @@ function App() {
         }
     };
 
+    // Handle login success
+    const handleLoginSuccess = () => {
+        const storedUsername = localStorage.getItem('username');
+        const token = localStorage.getItem('token');
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUsername(storedUsername);
+        setIsLoggedIn(true);
+        setCurrentView('trips');
+    };
+
+    // Handle signup success
+    const handleSignupSuccess = () => {
+        setCurrentView('login');
+        setError('Account created successfully! Please log in.');
+    };
+
+    // Handle logout
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        setIsLoggedIn(false);
+        setCurrentView('login');
+        setTrips([]);
+        setEditingTrip(null);
+    };
+
+    // Switch between login and signup
+    const handleSwitchToSignup = () => {
+        setCurrentView('signup');
+        setError('');
+    };
+
+    const handleSwitchToLogin = () => {
+        setCurrentView('login');
+        setError('');
+    };
+
+    // If not logged in, show login/signup screens
+    if (!isLoggedIn) {
+        return (
+            <div className="App">
+                {currentView === 'login' ? (
+                    <Login 
+                        onLoginSuccess={handleLoginSuccess}
+                        onSwitchToSignup={handleSwitchToSignup}
+                    />
+                ) : (
+                    <Signup 
+                        onSignupSuccess={handleSignupSuccess}
+                        onSwitchToLogin={handleSwitchToLogin}
+                    />
+                )}
+                {error && <div className="error-banner">{error}</div>}
+            </div>
+        );
+    }
+
     return (
         <div className="App">
             <header className="App-header">
-                <h1>🌍 Trip Manager</h1>
+                <div className="header-content">
+                    <h1>🌍 Trip Manager</h1>
+                    <div className="user-info">
+                        <span className="username">Welcome, {username}!</span>
+                        <button className="btn-logout" onClick={handleLogout}>Logout</button>
+                    </div>
+                </div>
                 <p>Manage your trips</p>
             </header>
             

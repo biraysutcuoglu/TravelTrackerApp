@@ -63,10 +63,23 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 @app.post("/signup", response_model=UserResponse)
 async def signup(user: UserSignUp):
     """Register new user"""
-    # Check if user already exists
+    # Check if username already exists
     existing_user = db.get_user_by_username(user.username)
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Check if email already exists
+    existing_email = None
+    try:
+        with db.engine.connect() as conn:
+            query = db.users.select().where(db.users.c.email == user.email)
+            result = conn.execute(query)
+            existing_email = result.fetchone()
+    except:
+        pass
+    
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
         
     # Hash password
     hashed_password = hash_password(user.password)
@@ -97,21 +110,13 @@ async def login(user: UserLogin):
     # Create access token
     access_token_expires = timedelta(minutes=60)
     access_token = create_access_token(
-        data={"sub": db_user[0]},
+        data={"sub": str(db_user[0])},
         expires_delta=access_token_expires
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
     
 # -----------------------------------------------------------------------------
-@app.get("/trips/{trip_name}")
-async def get_trip(trip_name: str):
-    # Get trip directly from database by name
-    trip = db.get_trip_by_name(trip_name)
-    if trip:
-        return {"trip_name": trip[0], "date": str(trip[1])}
-    raise HTTPException(status_code=404, detail="trip not found")
-
 @app.get("/trips/")
 async def get_all_trips(current_user: dict=Depends(get_current_user)):
     """List all trips (requires authentication)"""
@@ -133,6 +138,14 @@ async def post_trip(trip_name: str, date_str: str | None = None):
     
     db.insert_to_db(trip_name, trip_date)
     return {"trip_name": trip_name, "date": date_str}
+
+@app.get("/trips/{trip_name}")
+async def get_trip(trip_name: str):
+    # Get trip directly from database by name
+    trip = db.get_trip_by_name(trip_name)
+    if trip:
+        return {"trip_name": trip[0], "date": str(trip[1])}
+    raise HTTPException(status_code=404, detail="trip not found")
 
 @app.put("/trips/{trip_name}")
 async def put_trip(trip_name: str, date_str: str | None = None):
