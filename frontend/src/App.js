@@ -16,6 +16,8 @@ function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentView, setCurrentView] = useState('login'); // 'login', 'signup', or 'trips'
     const [username, setUsername] = useState('');
+    const [recommendations, setRecommendations] = useState([]); 
+    const [loadingRecs, setLoadingRecs] = useState(false);    
 
     // Check if user is already logged in
     useEffect(() => {
@@ -124,6 +126,24 @@ function App() {
         }
     };
 
+    // Fetch recommendations 
+    const fetchRecommendations = async () => {
+        setLoadingRecs(true);
+        setError('');
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/recommendations`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setRecommendations(response.data);
+        } catch (err) {
+            setError('Failed to fetch recommendations');
+            console.error(err);
+        } finally {
+            setLoadingRecs(false);
+        }
+    };
+
     // Handle login success
     const handleLoginSuccess = () => {
         const storedUsername = localStorage.getItem('username');
@@ -148,6 +168,7 @@ function App() {
         setCurrentView('login');
         setTrips([]);
         setEditingTrip(null);
+        setRecommendations([]);
     };
 
     // Switch between login and signup
@@ -180,6 +201,8 @@ function App() {
             </div>
         );
     }
+
+
 
     return (
         <div className="App">
@@ -219,6 +242,29 @@ function App() {
                                 onDelete={handleDeleteTrip}
                                 onEdit={setEditingTrip}
                             />
+                        )}
+                    </div>
+
+                    {/* Recommendations Section */}
+                    <div className="recommendations-section">
+                        <button
+                            onClick={fetchRecommendations}
+                            disabled={loadingRecs}
+                            className="btn-recommendations">
+                            {loadingRecs ? '⏳ Loading...' : '✈️ Get Destination Recommendations'}
+                        </button>
+
+                        {recommendations.length > 0 && (
+                            <div className="recommendations-list">
+                                <h2>Recommended Destinations</h2>
+                                {recommendations.map((rec, index) => (
+                                    <div key={index} className="recommendation-card">
+                                        <h3>📍 {rec.city}, {rec.country}</h3>
+                                        <p>{rec.reason}</p>
+                                        <p>🗓️ Best time to visit: {rec.best_time}</p>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
                 </div>

@@ -10,6 +10,15 @@ from sqlal_util import SQLAlUtil
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from security import decode_access_token, hash_password, verify_password, create_access_token
 
+import os
+import json
+
+from dotenv import load_dotenv
+load_dotenv()
+from groq import Groq
+
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 class UserSignUp(BaseModel):
     username: str
     email: str
@@ -185,6 +194,33 @@ def validate_date_format(date_str: str | None):
             datetime.strptime(date_str, "%d.%m.%Y")
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date. Date does not exist")
-    
+        
+        
+# -------------- Recommendations using Groq ------------------
+@app.get("/recommendations")
+async def get_recommendations(current_user: dict = Depends(get_current_user)):
+    # Get user's existing trips to personalize recommendations
+    existing_trips = db.get_all_trips(current_user["id"])
+    trip_names = [trip[0] for trip in existing_trips]
+
+    response = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "user",
+                "content": f"""Recommend 5 popular travel destinations.
+                The user has already been to: {trip_names}.
+                For each destination provide:
+                - City and country
+                - One sentence why it's popular
+                - Best time to visit
+                Return as JSON array only, no extra text, no markdown:
+                [{{"city": "...", "country": "...", "reason": "...", "best_time": "..."}}]"""
+            }
+        ]
+    )
+
+    recommendations = json.loads(response.choices[0].message.content)
+    return recommendations
 
 
