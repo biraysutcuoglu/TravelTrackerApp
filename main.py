@@ -120,23 +120,29 @@ async def login(user: UserLogin):
 @app.get("/trips/")
 async def get_all_trips(current_user: dict=Depends(get_current_user)):
     """List all trips (requires authentication)"""
-    trips = db.get_all_trips()
+    trips = db.get_all_trips(current_user["id"])
     return [{"trip_name": trip[0], "date": str(trip[1])} for trip in trips]
 
 @app.post("/trips/")
 # date is optional
-async def post_trip(trip_name: str, date_str: str | None = None):
+async def post_trip(trip_name: str, date_str: str | None = None, current_user: dict = Depends(get_current_user)):
     # validate date format (DD.MM.YYYY)
     validate_date_format(date_str)
     
     trip_name = trip_name.capitalize()
+    
+    # check if this trip already exists for this user
+    existing_trip = db.get_trip_by_name(trip_name)
+    if existing_trip:
+        raise HTTPException(status_code=400, detail=f"Trip '{trip_name}' already exists")
+     
     # Convert DD.MM.YYYY to YYYY-MM-DD format for database
     if date_str:
         trip_date = datetime.strptime(date_str, "%d.%m.%Y").date()
     else:
         trip_date = None
     
-    db.insert_to_db(trip_name, trip_date)
+    db.insert_to_db(trip_name, trip_date, current_user["id"])
     return {"trip_name": trip_name, "date": date_str}
 
 @app.get("/trips/{trip_name}")
@@ -148,35 +154,25 @@ async def get_trip(trip_name: str):
     raise HTTPException(status_code=404, detail="trip not found")
 
 @app.put("/trips/{trip_name}")
-async def put_trip(trip_name: str, date_str: str | None = None):
+async def put_trip(trip_name: str, date_str: str | None = None, current_user: dict = Depends(get_current_user)):
     # validate date format (DD.MM.YYYY)
     validate_date_format(date_str)
     
     trip_name = trip_name.capitalize()
     
-    # Check if trip exists
-    trips = db.get_all_trips()
-    exists = any(t[0].lower() == trip_name.lower() for t in trips)
+    trip_date = datetime.strptime(date_str, "%d.%m.%Y").date() if date_str else None
+
+    existing = db.get_trip_by_name(trip_name)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Trip not found")
     
-    # Convert DD.MM.YYYY to date object for database
-    if date_str:
-        trip_date = datetime.strptime(date_str, "%d.%m.%Y").date()
-    else:
-        trip_date = None
-    
-    if exists:
-        # Update existing trip
-        db.insert_to_db(trip_name, trip_date)
-        return {"trip_name": trip_name, "date": date_str}
-    else:
-        # Create new if not found
-        db.insert_to_db(trip_name, trip_date)
-        return {"trip_name": trip_name, "date": date_str}
+    db.update_trip(trip_name, trip_date)
+    return {"trip_name": trip_name, "date": date_str}
     
 @app.delete("/trips/{trip_name}")
-async def delete_trip(trip_name: str):
+async def delete_trip(trip_name: str, current_user: dict = Depends(get_current_user)):
     trip_name = trip_name.capitalize()
-    num_deleted = db.delete_trip_by_name(trip_name)
+    num_deleted = db.delete_trip_by_name(trip_name, user_id=current_user["id"])
     if num_deleted == 0:
         raise HTTPException(status_code=404, detail="Delete not successful. trip not found")
     return {"message": f"{trip_name} deleted"}

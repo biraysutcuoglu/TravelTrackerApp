@@ -36,19 +36,30 @@ class SQLAlUtil:
             result = conn.execute(query)
             return result.fetchone()
     
-    def insert_to_db(self, name: str, trip_date: date):
+    # TODO: Change this function name to insert_trip
+    def insert_to_db(self, name: str, trip_date: date, user_id: int):
         """Insert a trip record to the database"""
-        insert_statement = insert(self.trips).values(name=name, date=trip_date)
+        insert_statement = insert(self.trips).values(name=name, date=trip_date, user_id=user_id)
         
         with self.engine.connect() as conn:
             result = conn.execute(insert_statement)
             conn.commit()
             return result
     
-    def get_all_trips(self):
+    def update_trip(self, trip_name: str, trip_date: id):
+        with self.engine.connect() as conn:
+            query = self.trips.update().where(
+                self.trips.c.name.ilike(trip_name)
+            ).values(date=trip_date)
+            conn.execute(query)
+            conn.commit()
+    
+    
+    def get_all_trips(self, user_id):
         """Get all trip records from the database"""
         with self.engine.connect() as conn:
-            result = conn.execute(self.trips.select())
+            query = self.trips.select().where(self.trips.c.user_id == user_id)
+            result = conn.execute(query)
             return result.fetchall()
         
     def get_trip_by_name(self, trip_name: str):
@@ -60,11 +71,12 @@ class SQLAlUtil:
             result = conn.execute(query)
             return result.fetchone()
         
-    def delete_trip_by_name(self, trip_name: str):
+    def delete_trip_by_name(self, trip_name: str, user_id: int):
         """Delete a trip record by name from the database"""
         with self.engine.connect() as conn:
             query = delete(self.trips).where(
-                self.trips.c.name.ilike(trip_name)
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.user_id == user_id
             )
             result = conn.execute(query)
             conn.commit()
