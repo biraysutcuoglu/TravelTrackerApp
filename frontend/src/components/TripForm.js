@@ -64,7 +64,7 @@ function TripForm({ onSubmit, initialTrip, onCancel }) {
 
             <div className="form-buttons">
                 <button type="submit" className="btn btn-primary">
-                    {initialTrip ? '✏️ Update Trip' : '➕ Add Trip'}
+                    {initialTrip?.isEditing? '✏️ Update Trip' : '➕ Add Trip'}
                 </button>
                 {initialTrip && (
                     <button 

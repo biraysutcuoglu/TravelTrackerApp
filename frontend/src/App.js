@@ -5,6 +5,7 @@ import TripList from './components/TripList';
 import TripForm from './components/TripForm';
 import Login from './components/Login';
 import Signup from './components/Signup';
+import RecommendationsPage from './components/RecommendationsPage';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -18,6 +19,8 @@ function App() {
     const [username, setUsername] = useState('');
     const [recommendations, setRecommendations] = useState([]); 
     const [loadingRecs, setLoadingRecs] = useState(false);    
+    const [showRecommendations, setShowRecommendations] = useState(false);
+    const [prefilledTrip, setPrefilledTrip] = useState(null);
 
     // Check if user is already logged in
     useEffect(() => {
@@ -126,7 +129,6 @@ function App() {
         }
     };
 
-    // Fetch recommendations 
     const fetchRecommendations = async () => {
         setLoadingRecs(true);
         setError('');
@@ -136,6 +138,7 @@ function App() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setRecommendations(response.data);
+            setShowRecommendations(true);
         } catch (err) {
             setError('Failed to fetch recommendations');
             console.error(err);
@@ -202,13 +205,26 @@ function App() {
         );
     }
 
-
+    if (showRecommendations) {
+        return (
+            <RecommendationsPage
+                recommendations={recommendations}
+                username={username}
+                onBack={() => setShowRecommendations(false)}
+                onLogout={handleLogout}
+                onPlanTrip={(city) => {
+                    setShowRecommendations(false);
+                    setPrefilledTrip({ trip_name: city, date: '' });
+                }}
+            />
+        );
+    }
 
     return (
         <div className="App">
             <header className="App-header">
                 <div className="header-content">
-                    <h1>🌍 Trip Manager</h1>
+                    <h1>Trip Manager</h1>
                     <div className="user-info">
                         <span className="username">Welcome, {username}!</span>
                         <button className="btn-logout" onClick={handleLogout}>Logout</button>
@@ -225,8 +241,11 @@ function App() {
                         <h2>{editingTrip ? 'Edit Trip' : 'Add New Trip'}</h2>
                         <TripForm 
                             onSubmit={editingTrip ? handleUpdateTrip : handleAddTrip}
-                            initialTrip={editingTrip}
-                            onCancel={() => setEditingTrip(null)}
+                            initialTrip={editingTrip || prefilledTrip}
+                            onCancel={() => {
+                                setEditingTrip(null);
+                                setPrefilledTrip(null);
+                            }}
                         />
                     </div>
 
@@ -240,12 +259,11 @@ function App() {
                             <TripList 
                                 trips={trips}
                                 onDelete={handleDeleteTrip}
-                                onEdit={setEditingTrip}
+                                onEdit={(trip) => setEditingTrip({ ...trip, isEditing: true })}
                             />
                         )}
                     </div>
 
-                    {/* Recommendations Section */}
                     <div className="recommendations-section">
                         <button
                             onClick={fetchRecommendations}
@@ -253,19 +271,6 @@ function App() {
                             className="btn-recommendations">
                             {loadingRecs ? '⏳ Loading...' : '✈️ Get Destination Recommendations'}
                         </button>
-
-                        {recommendations.length > 0 && (
-                            <div className="recommendations-list">
-                                <h2>Recommended Destinations</h2>
-                                {recommendations.map((rec, index) => (
-                                    <div key={index} className="recommendation-card">
-                                        <h3>📍 {rec.city}, {rec.country}</h3>
-                                        <p>{rec.reason}</p>
-                                        <p>🗓️ Best time to visit: {rec.best_time}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>

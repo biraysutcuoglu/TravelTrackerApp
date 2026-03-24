@@ -8,6 +8,7 @@ A full-stack travel management application built with FastAPI (backend) and Reac
 - Add, edit, delete and list your trips
 - AI-powered destination recommendations based on your travel history (via Groq LLM)
 - Each user only sees their own trips (user-scoped data)
+- "Plan a Trip" button on recommendation cards to pre-fill the trip form
 
 ## Planned Features
 - Show destinations within a given distance (select from map)
@@ -33,6 +34,7 @@ A full-stack travel management application built with FastAPI (backend) and Reac
 │   │   │   ├── Signup.js        # Signup form
 │   │   │   ├── TripList.js      # Trip list display
 │   │   │   └── TripForm.js      # Add/edit trip form
+│   │   │   └── RecommendationsPage.js # AI destination recommendations view
 ```
 
 ---

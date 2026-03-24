@@ -208,7 +208,7 @@ async def get_recommendations(current_user: dict = Depends(get_current_user)):
         messages=[
             {
                 "role": "user",
-                "content": f"""Recommend 5 popular travel destinations.
+                "content": f"""Recommend 6 popular travel destinations.
                 The user has already been to: {trip_names}.
                 For each destination provide:
                 - City and country
