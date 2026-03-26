@@ -2,7 +2,6 @@
 Test Template for FastAPI Trips Application
 
 This file contains test stubs and templates.
-Fill in the test implementations yourself!
 """
 
 import pytest
