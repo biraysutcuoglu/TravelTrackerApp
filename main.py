@@ -10,6 +10,15 @@ from sqlal_util import SQLAlUtil
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from security import decode_access_token, hash_password, verify_password, create_access_token
 
+import os
+import json
+
+from dotenv import load_dotenv
+load_dotenv()
+from groq import Groq
+
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 class UserSignUp(BaseModel):
     username: str
     email: str
@@ -63,10 +72,23 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 @app.post("/signup", response_model=UserResponse)
 async def signup(user: UserSignUp):
     """Register new user"""
-    # Check if user already exists
+    # Check if username already exists
     existing_user = db.get_user_by_username(user.username)
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Check if email already exists
+    existing_email = None
+    try:
+        with db.engine.connect() as conn:
+            query = db.users.select().where(db.users.c.email == user.email)
+            result = conn.execute(query)
+            existing_email = result.fetchone()
+    except:
+        pass
+    
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
         
     # Hash password
     hashed_password = hash_password(user.password)
@@ -97,85 +119,137 @@ async def login(user: UserLogin):
     # Create access token
     access_token_expires = timedelta(minutes=60)
     access_token = create_access_token(
-        data={"sub": db_user[0]},
+        data={"sub": str(db_user[0])},
         expires_delta=access_token_expires
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
     
 # -----------------------------------------------------------------------------
-@app.get("/trips/{trip_name}")
-async def get_trip(trip_name: str):
-    # Get trip directly from database by name
-    trip = db.get_trip_by_name(trip_name)
-    if trip:
-        return {"trip_name": trip[0], "date": str(trip[1])}
-    raise HTTPException(status_code=404, detail="trip not found")
-
 @app.get("/trips/")
 async def get_all_trips(current_user: dict=Depends(get_current_user)):
     """List all trips (requires authentication)"""
-    trips = db.get_all_trips()
-    return [{"trip_name": trip[0], "date": str(trip[1])} for trip in trips]
+    trips = db.get_all_trips(current_user["id"])
+    
+    # group dates by trip name
+    grouped = {}
+    for trip in trips:
+        trip_name = trip[1]
+        date = str(trip[2])
+        if trip_name not in grouped:
+            grouped[trip_name] = []
+        grouped[trip_name].append(date)
+        
+    return [{"trip_name": name, "dates": dates} for name, dates in grouped.items()]
 
 @app.post("/trips/")
 # date is optional
-async def post_trip(trip_name: str, date_str: str | None = None):
-    # validate date format (DD.MM.YYYY)
+async def post_trip(trip_name: str, date_str: str | None = None, current_user: dict = Depends(get_current_user)):
+    # validate date format (YYYY.MM.DD)
     validate_date_format(date_str)
     
     trip_name = trip_name.capitalize()
+     
     # Convert DD.MM.YYYY to YYYY-MM-DD format for database
     if date_str:
-        trip_date = datetime.strptime(date_str, "%d.%m.%Y").date()
+        trip_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     else:
         trip_date = None
+        
+    # check if there is a trip with same name and same date
+    existing = db.get_trip_by_name_and_date(current_user["id"], trip_name, trip_date)
+    if existing:
+        raise HTTPException(status_code=400, detail=f"You already have a trip to {trip_name} on this date")
     
-    db.insert_to_db(trip_name, trip_date)
+    db.insert_to_db(trip_name, trip_date, current_user["id"])
     return {"trip_name": trip_name, "date": date_str}
 
 @app.put("/trips/{trip_name}")
-async def put_trip(trip_name: str, date_str: str | None = None):
+async def put_trip(trip_name: str, 
+                   old_date_str: str | None = None, 
+                   new_date_str: str | None = None,
+                   current_user: dict = Depends(get_current_user)):
+    
     # validate date format (DD.MM.YYYY)
-    validate_date_format(date_str)
+    validate_date_format(new_date_str)
     
     trip_name = trip_name.capitalize()
     
-    # Check if trip exists
-    trips = db.get_all_trips()
-    exists = any(t[0].lower() == trip_name.lower() for t in trips)
+    old_date = datetime.strptime(old_date_str, "%Y-%m-%d").date() if old_date_str else None  # changes format because comes from the database
+    new_date = datetime.strptime(new_date_str, "%Y-%m-%d").date() if new_date_str else None
+
+    existing = db.get_trip_by_name_and_date(current_user["id"], trip_name, old_date)
     
-    # Convert DD.MM.YYYY to date object for database
-    if date_str:
-        trip_date = datetime.strptime(date_str, "%d.%m.%Y").date()
-    else:
-        trip_date = None
+    if not existing:
+        raise HTTPException(status_code=404, detail="Trip not found")
     
-    if exists:
-        # Update existing trip
-        db.insert_to_db(trip_name, trip_date)
-        return {"trip_name": trip_name, "date": date_str}
-    else:
-        # Create new if not found
-        db.insert_to_db(trip_name, trip_date)
-        return {"trip_name": trip_name, "date": date_str}
+    db.update_trip(current_user["id"], trip_name, old_date, new_date)
+    return {"trip_name": trip_name, "date": new_date_str}
     
 @app.delete("/trips/{trip_name}")
-async def delete_trip(trip_name: str):
+async def delete_trip(trip_name: str, date_str: str | None = None, current_user: dict = Depends(get_current_user)):
     trip_name = trip_name.capitalize()
-    num_deleted = db.delete_trip_by_name(trip_name)
-    if num_deleted == 0:
-        raise HTTPException(status_code=404, detail="Delete not successful. trip not found")
-    return {"message": f"{trip_name} deleted"}
+    
+    if date_str:
+        if date_str == "None":
+            num_deleted = db.delete_trip_by_name_and_date(trip_name, None, current_user["id"])
+        else:
+            date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            num_deleted = db.delete_trip_by_name_and_date(trip_name, date, current_user["id"])
+        
+        if num_deleted == 0:
+            raise HTTPException(status_code=404, detail="No trips found")
+        
+        # Check if any dates remain for this trip
+        remaining = db.get_trip_by_name(current_user["id"], trip_name)
+        if not remaining:
+            return {"message": f"{trip_name} has no more dates, trip fully deleted"}
+        
+        return {"message": f"Date {date_str} deleted from {trip_name}"}
+
+    else:
+        # No date provided, delete all dates for this trip
+        num_deleted = db.delete_trip_by_name(trip_name, current_user["id"])
+        if num_deleted == 0:
+            raise HTTPException(status_code=404, detail="Trip not found")
+        return {"message": f"{trip_name} and all its dates deleted"}
+             
 
 def validate_date_format(date_str: str | None):
     if date_str:
-        if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", date_str):
-            raise HTTPException(status_code=400, detail="Invalid date format. Use DD.MM.YYYY")
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):  # YYYY-MM-DD
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
         try:
-            datetime.strptime(date_str, "%d.%m.%Y")
+            datetime.strptime(date_str, "%Y-%m-%d")
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date. Date does not exist")
-    
+        
+        
+# -------------- Recommendations using Groq ------------------
+@app.get("/recommendations")
+async def get_recommendations(current_user: dict = Depends(get_current_user)):
+    # Get user's existing trips to personalize recommendations
+    existing_trips = db.get_all_trips(current_user["id"])
+    trip_names = [trip[1] for trip in existing_trips]
+
+    response = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "user",
+                "content": f"""Recommend 6 popular travel destinations similar to user's previous trips.
+                The user has already been to: {trip_names}.
+                For each destination provide:
+                - City and country
+                - One sentence why it's popular
+                - Best time to visit
+                Return as JSON array only, no extra text, no markdown:
+                [{{"city": "...", "country": "...", "reason": "...", "best_time": "..."}}]"""
+            }
+        ]
+    )
+
+    recommendations = json.loads(response.choices[0].message.content)
+    return recommendations
 
 

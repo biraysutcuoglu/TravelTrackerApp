@@ -36,39 +36,76 @@ class SQLAlUtil:
             result = conn.execute(query)
             return result.fetchone()
     
-    def insert_to_db(self, name: str, trip_date: date):
+    # TODO: Change this function name to insert_trip
+    def insert_to_db(self, name: str, trip_date: date, user_id: int):
         """Insert a trip record to the database"""
-        insert_statement = insert(self.trips).values(name=name, date=trip_date)
+        insert_statement = insert(self.trips).values(name=name, date=trip_date, user_id=user_id)
         
         with self.engine.connect() as conn:
             result = conn.execute(insert_statement)
             conn.commit()
             return result
     
-    def get_all_trips(self):
+    def update_trip(self, user_id: int, trip_name: str, old_date, new_date):
+        with self.engine.connect() as conn:
+            query = self.trips.update().where(
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.date == old_date,
+                self.trips.c.user_id == user_id
+            ).values(date=new_date)
+            conn.execute(query)
+            conn.commit()
+    
+    
+    def get_all_trips(self, user_id):
         """Get all trip records from the database"""
         with self.engine.connect() as conn:
-            result = conn.execute(self.trips.select())
+            query = self.trips.select().where(self.trips.c.user_id == user_id)
+            result = conn.execute(query)
             return result.fetchall()
         
-    def get_trip_by_name(self, trip_name: str):
+    def get_trip_by_name(self, user_id: int, trip_name: str):
         """Get a specific trip by name from the database"""
         with self.engine.connect() as conn:
             query = self.trips.select().where(
-                self.trips.c.name.ilike(trip_name)
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.user_id == user_id
+            )
+            result = conn.execute(query)
+            return result.fetchall() # return all matching rows (there can be one trip with multiple dates)
+        
+    def get_trip_by_name_and_date(self, user_id: int, trip_name: str, date):
+        """Get specific trip by name, date and user"""
+        with self.engine.connect() as conn:
+            query = self.trips.select().where(
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.date == date, 
+                self.trips.c.user_id == user_id
             )
             result = conn.execute(query)
             return result.fetchone()
         
-    def delete_trip_by_name(self, trip_name: str):
+    def delete_trip_by_name(self, trip_name: str, user_id: int):
         """Delete a trip record by name from the database"""
         with self.engine.connect() as conn:
             query = delete(self.trips).where(
-                self.trips.c.name.ilike(trip_name)
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.user_id == user_id
             )
             result = conn.execute(query)
             conn.commit()
-            return result.rowcount  # Returns number of rows deleted (1 or 0)
+            return result.rowcount  # Returns number of rows deleted
+        
+    def delete_trip_by_name_and_date(self, trip_name: str, date, user_id: int):
+        with self.engine.connect() as conn:
+            query = delete(self.trips).where(
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.date == date,
+                self.trips.c.user_id == user_id
+            )
+            result = conn.execute(query)
+            conn.commit()
+            return result.rowcount # number of rows deleted
     
     def close(self):
         """Close the database connection"""

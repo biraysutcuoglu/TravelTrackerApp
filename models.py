@@ -1,11 +1,13 @@
 from datetime import datetime
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Date, DateTime, Boolean, Integer
+from sqlalchemy import create_engine, MetaData, Table, Column, String, Date, DateTime, Boolean, Integer, ForeignKey
 
 def define_trips_table(meta):
     return Table("trips",
             meta,
-            Column('name', String, primary_key=True), 
-            Column('date', Date))
+            Column('id', Integer, primary_key=True, autoincrement=True),
+            Column('name', String), 
+            Column('date', Date),
+            Column('user_id', Integer, ForeignKey('users.id'), nullable=False))
             
             
 def define_users_table(meta):

@@ -7,9 +7,17 @@
 .App-header {
     background-color: rgba(0, 0, 0, 0.2);
     padding: 40px 20px;
-    text-align: center;
     color: white;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
 .App-header h1 {
@@ -19,10 +27,38 @@
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.username {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.btn-logout {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-logout:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
 .App-header p {
-    margin: 8px 0 0 0;
+    margin: 0;
     font-size: 1.1rem;
     opacity: 0.9;
+    text-align: center;
 }
 
 .container {
@@ -62,6 +98,19 @@
     text-align: center;
 }
 
+.error-banner {
+    background: #fee;
+    border: 1px solid #f88;
+    color: #c33;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    margin-top: 20px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .loading,
 .empty-state {
     text-align: center;
@@ -83,5 +132,16 @@
     .form-section,
     .list-section {
         padding: 20px;
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .user-info {
+        width: 100%;
+        justify-content: space-between;
     }
 }
