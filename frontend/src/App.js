@@ -89,14 +89,16 @@ function App() {
     };
 
     // Update trip
-    const handleUpdateTrip = async (tripName, date) => {
+    const handleUpdateTrip = async (tripName, newDate, oldDate) => {
         try {
             setError('');
-            const params = { trip_name: tripName };
-            if (date) params.date_str = date;
+
+            const params = {};
+            if(oldDate) params.old_date_str = oldDate;
+            if(newDate) params.new_date_str = newDate;
             
             const token = localStorage.getItem('token');
-            await axios.put(`${API_BASE_URL}/trips/${editingTrip.trip_name}`, null, { 
+            await axios.put(`${API_BASE_URL}/trips/${tripName}`, null, { 
                 params,
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -111,16 +113,22 @@ function App() {
     };
 
     // Delete trip
-    const handleDeleteTrip = async (tripName) => {
-        if (!window.confirm(`Are you sure you want to delete "${tripName}"?`)) return;
+    const handleDeleteTrip = async (tripName, date) => {
+        const message = date 
+            ? `Delete ${date} from "${tripName}"?` 
+            : `Delete all dates for "${tripName}"?`;
+        
+        if (!window.confirm(message)) return;
         
         try {
             setError('');
+            const params = {};
+            if (date) params.date_str = date;  // only pass date if deleting specific date
+
             const token = localStorage.getItem('token');
             await axios.delete(`${API_BASE_URL}/trips/${tripName}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                params,
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             await fetchTrips();
         } catch (err) {

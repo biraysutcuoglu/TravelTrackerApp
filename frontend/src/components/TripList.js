@@ -7,7 +7,7 @@ function TripList({ trips, onDelete, onEdit }) {
         <div className="trip-list">
             {trips.map((trip, index) => (
                 <TripCard
-                    key={index}
+                    key={trip.trip_name}
                     trip={trip}
                     onDelete={onDelete}
                     onEdit={onEdit}

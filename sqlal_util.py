@@ -46,11 +46,13 @@ class SQLAlUtil:
             conn.commit()
             return result
     
-    def update_trip(self, trip_name: str, trip_date: id):
+    def update_trip(self, user_id: int, trip_name: str, old_date, new_date):
         with self.engine.connect() as conn:
             query = self.trips.update().where(
-                self.trips.c.name.ilike(trip_name)
-            ).values(date=trip_date)
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.date == old_date,
+                self.trips.c.user_id == user_id
+            ).values(date=new_date)
             conn.execute(query)
             conn.commit()
     
@@ -62,11 +64,23 @@ class SQLAlUtil:
             result = conn.execute(query)
             return result.fetchall()
         
-    def get_trip_by_name(self, trip_name: str):
+    def get_trip_by_name(self, user_id: int, trip_name: str):
         """Get a specific trip by name from the database"""
         with self.engine.connect() as conn:
             query = self.trips.select().where(
-                self.trips.c.name.ilike(trip_name)
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.user_id == user_id
+            )
+            result = conn.execute(query)
+            return result.fetchall() # return all matching rows (there can be one trip with multiple dates)
+        
+    def get_trip_by_name_and_date(self, user_id: int, trip_name: str, date):
+        """Get specific trip by name, date and user"""
+        with self.engine.connect() as conn:
+            query = self.trips.select().where(
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.date == date, 
+                self.trips.c.user_id == user_id
             )
             result = conn.execute(query)
             return result.fetchone()
@@ -80,7 +94,18 @@ class SQLAlUtil:
             )
             result = conn.execute(query)
             conn.commit()
-            return result.rowcount  # Returns number of rows deleted (1 or 0)
+            return result.rowcount  # Returns number of rows deleted
+        
+    def delete_trip_by_name_and_date(self, trip_name: str, date, user_id: int):
+        with self.engine.connect() as conn:
+            query = delete(self.trips).where(
+                self.trips.c.name.ilike(trip_name),
+                self.trips.c.date == date,
+                self.trips.c.user_id == user_id
+            )
+            result = conn.execute(query)
+            conn.commit()
+            return result.rowcount # number of rows deleted
     
     def close(self):
         """Close the database connection"""

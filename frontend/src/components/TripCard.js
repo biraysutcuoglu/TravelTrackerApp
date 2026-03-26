@@ -2,13 +2,29 @@ import React from 'react';
 import './TripCard.css';
 
 function TripCard({ trip, onDelete, onEdit }) {
-    const hasDate = trip.date && trip.date !== 'None';
+    const hasDates = trip.dates && trip.dates.length > 0;
 
     return (
         <div className="trip-card">
             <div className="trip-info">
                 <h3>{trip.trip_name}</h3>
-                {hasDate && <p className="trip-date">📅 {trip.date}</p>}
+                {hasDates && (
+                    <div className="trip-dates">
+                        {trip.dates.map((date, index) => (
+                            <div key={index} className="trip-date-row">
+                                <p className="trip-date">📅 {date}</p>
+                                {/* delete specific date */}
+                                <button
+                                    className="btn-action btn-delete-date"
+                                    onClick={() => onDelete(trip.trip_name, date)}
+                                    title="Delete this date"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
             <div className="trip-actions">
                 <button 
@@ -18,10 +34,11 @@ function TripCard({ trip, onDelete, onEdit }) {
                 >
                     ✏️
                 </button>
+                {/* delete entire trip */}
                 <button 
                     className="btn-action btn-delete"
-                    onClick={() => onDelete(trip.trip_name)}
-                    title="Delete trip"
+                    onClick={() => onDelete(trip.trip_name, null)}
+                    title="Delete entire trip"
                 >
                     🗑️
                 </button>
