@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 from datetime import date
-from main import app, validate_date_format
+from backend.main import app, validate_date_format
 
 
 # Create a TestClient for making requests to the API

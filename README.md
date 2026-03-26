@@ -181,6 +181,5 @@ Visit `http://localhost:8000/docs` to explore and test the API interactively.
 - `axios` - HTTP client
 
 ### TODO
-- when deleting a trip with date = None gives error
-- When a new trip gets added if the date format is wrong dont clear up the trip name
+
 
