@@ -91,20 +91,21 @@ function App() {
     };
 
     // Update trip
-    const handleUpdateTrip = async (tripName, newDate, oldDate) => {
+    const handleUpdateTrip = async (tripName, newStartDate, newEndDate, newDestination) => {
         try {
             setError('');
+            const params = {
+                old_start_date_str: editingTrip.start_date || null,
+                old_end_date_str: editingTrip.end_date || null,
+                new_start_date_str: newStartDate || null,
+                new_end_date_str: newEndDate || null,
+                destination: newDestination || null
+            };
 
-            const params = {};
-            if(oldDate) params.old_date_str = oldDate;
-            if(newDate) params.new_date_str = newDate;
-            
             const token = localStorage.getItem('token');
-            await axios.put(`${API_BASE_URL}/trips/${tripName}`, null, { 
+            await axios.put(`${API_BASE_URL}/trips/${tripName}`, null, {
                 params,
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             await fetchTrips();
             setEditingTrip(null);
@@ -269,7 +270,11 @@ function App() {
                             <TripList 
                                 trips={trips}
                                 onDelete={handleDeleteTrip}
-                                onEdit={(trip) => setEditingTrip({ ...trip, isEditing: true })}
+                                onEdit={(tripName, entry) => setEditingTrip({
+                                    trip_name: tripName,
+                                    ...entry,
+                                    isEditing: true
+                                })}
                             />
                         )}
                     </div>

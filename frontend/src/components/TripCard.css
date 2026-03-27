@@ -83,3 +83,9 @@
 .trip-date {
     margin: 0;
 }
+
+.entry-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}

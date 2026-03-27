@@ -9,22 +9,13 @@ function TripCard({ trip, onDelete, onEdit }) {
             <div className="trip-info">
                 <div className="trip-header">
                     <h3>{trip.trip_name}</h3>
-                    <div className="trip-actions">
-                        <button 
-                            className="btn-action btn-edit"
-                            onClick={() => onEdit(trip)}
-                            title="Edit trip"
-                        >
-                            ✏️
-                        </button>
-                        <button 
-                            className="btn-action btn-delete"
-                            onClick={() => onDelete(trip.trip_name, null, null)}
-                            title="Delete entire trip"
-                        >
-                            🗑️
-                        </button>
-                    </div>
+                    <button 
+                        className="btn-action btn-delete"
+                        onClick={() => onDelete(trip.trip_name, null, null)}
+                        title="Delete entire trip"
+                    >
+                        🗑️
+                    </button>
                 </div>
                 {hasEntries && (
                     <div className="trip-dates">
@@ -34,13 +25,22 @@ function TripCard({ trip, onDelete, onEdit }) {
                                     <p className="trip-destination">📍 {entry.destination}</p>
                                     <p className="trip-date">📅 {entry.start_date} → {entry.end_date}</p>
                                 </div>
-                                <button
-                                    className="btn-action btn-delete-date"
-                                    onClick={() => onDelete(trip.trip_name, entry.start_date, entry.end_date)}
-                                    title="Delete this date"
-                                >
-                                    🗑️
-                                </button>
+                                <div className="entry-actions">
+                                    <button
+                                        className="btn-action btn-edit"
+                                        onClick={() => onEdit(trip.trip_name, entry)}
+                                        title="Edit this entry"
+                                    >
+                                        ✏️
+                                    </button>
+                                    <button
+                                        className="btn-action btn-delete-date"
+                                        onClick={() => onDelete(trip.trip_name, entry.start_date, entry.end_date)}
+                                        title="Delete this entry"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
