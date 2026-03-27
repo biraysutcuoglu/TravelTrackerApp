@@ -68,11 +68,13 @@ function App() {
     }, [isLoggedIn, currentView]);
 
     // Add new trip
-    const handleAddTrip = async (tripName, date) => {
+    const handleAddTrip = async (tripName, startDate, endDate, destination) => {
         try {
             setError('');
             const params = { trip_name: tripName };
-            if (date) params.date_str = date;
+            if (startDate) params.start_date_str = startDate;
+            if (endDate) params.end_date_str = endDate;
+            if (destination) params.destination = destination;
             
             const token = localStorage.getItem('token');
             await axios.post(`${API_BASE_URL}/trips/`, null, { 

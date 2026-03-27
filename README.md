@@ -1,5 +1,7 @@
 # 🌍 Travel Tracker App
 
+### 🚧 🚧 Under construction 
+
 A full-stack travel management application built with FastAPI (backend) and React (frontend).
 
 ## Features
@@ -15,6 +17,12 @@ A full-stack travel management application built with FastAPI (backend) and Reac
 - Caching for recommendations (if same destination searched)
 - Move configurations to a config file
 - Bucketlist vs visited trips distinction
+
+- Upload Photo → Detect Location (use google vision API)
+- Auto-create trip
+- Feed into recommendation system
+        Creates a full AI loop:
+        Vision → Data → LLM → UX
 
 ---
 
@@ -110,15 +118,28 @@ Extracts user ID → fetches user → returns protected data
 | email | String | Unique |
 | hashed_password | String | Argon2 hashed |
 | is_active | Boolean | Default: true |
-| created_at | DateTime | Auto timestamp |
+| created_at | Date | Auto timestamp |
 
 ### trips
 | Column | Type | Notes |
 |---|---|---|
+| id | Integer | Primary key, autoincrement |
 | name | String | Primary key |
-| date | Date | Optional |
+| start_date | Date | Optional |
+| end_date | Date | Optional |
+| destination | String | Optional |
 | user_id | Integer | Foreign key → users.id |
+| created_at | Date | Auto timestamp |
 
+### 🚧 itineraries
+| Column | Type | Notes |
+|---|---|---|
+| id | Integer | Primary key, autoincrement |
+| trip_id | Integer | Foreign key → trips.id |
+| raw_json | JSON | Optional |
+| summary | String | Optional |
+| budget | String | Optional |
+| created_at | Date | Auto timestamp |
 ---
 
 ## Setup & Running
@@ -181,5 +202,6 @@ Visit `http://localhost:8000/docs` to explore and test the API interactively.
 - `axios` - HTTP client
 
 ### TODO
+
 
 

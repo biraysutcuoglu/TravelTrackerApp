@@ -135,56 +135,90 @@ async def get_all_trips(current_user: dict=Depends(get_current_user)):
     grouped = {}
     for trip in trips:
         trip_name = trip[1]
-        date = str(trip[2])
-        if trip_name not in grouped:
-            grouped[trip_name] = []
-        grouped[trip_name].append(date)
+        start_date = str(trip[2])
+        end_date = str(trip[3])
+        destination = trip[4]
         
-    return [{"trip_name": name, "dates": dates} for name, dates in grouped.items()]
-
+        if trip_name not in grouped:
+           grouped[trip_name] = {"entries": []}
+           
+        grouped[trip_name]["entries"].append({
+            "start_date": start_date,
+            "end_date": end_date,
+            "destination": destination
+        })
+    
+    # convert dict to list
+    result = []
+    for name, data in grouped.items():
+        result.append({
+            "trip_name": name,
+            "entries": data["entries"]
+        })        
+    
+    return result
+        
+        
 @app.post("/trips/")
 # date is optional
-async def post_trip(trip_name: str, date_str: str | None = None, current_user: dict = Depends(get_current_user)):
+async def post_trip(trip_name: str, start_date_str: str | None = None, end_date_str: str | None = None, destination: str | None = None,  current_user: dict = Depends(get_current_user)):
     # validate date format (YYYY.MM.DD)
-    validate_date_format(date_str)
+    validate_date_format(start_date_str)
+    validate_date_format(end_date_str)
     
+    created_at = date.today()
     trip_name = trip_name.capitalize()
      
-    # Convert DD.MM.YYYY to YYYY-MM-DD format for database
-    if date_str:
-        trip_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    if start_date_str:
+        trip_start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
     else:
-        trip_date = None
+        trip_start_date = None
         
-    # check if there is a trip with same name and same date
-    existing = db.get_trip_by_name_and_date(current_user["id"], trip_name, trip_date)
+    if end_date_str:
+        trip_end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+    else:
+        trip_end_date = None
+        
+    # check if there is a trip with same name and same start date and destination
+    existing = db.get_trip_by_name_date_and_destination(current_user["id"], trip_name, trip_start_date, destination)
     if existing:
-        raise HTTPException(status_code=400, detail=f"You already have a trip to {trip_name} on this date")
+        raise HTTPException(status_code=400, detail=f"You already have a trip to {destination} on this date")
     
-    db.insert_to_db(trip_name, trip_date, current_user["id"])
-    return {"trip_name": trip_name, "date": date_str}
+    db.insert_to_db(trip_name, start_date=trip_start_date, end_date=trip_end_date, destination=destination, user_id=current_user["id"], created_at=created_at)
+    return {"trip_name": trip_name, "start_date": start_date_str, "end_date": end_date_str, "destination": destination, "created_at": str(created_at)}
 
 @app.put("/trips/{trip_name}")
 async def put_trip(trip_name: str, 
-                   old_date_str: str | None = None, 
-                   new_date_str: str | None = None,
+                   old_start_date_str: str | None = None, 
+                   new_start_date_str: str | None = None,
+                   old_end_date_str: str | None = None,
+                   new_end_date_str: str | None = None,
+                   destination: str | None = None,
                    current_user: dict = Depends(get_current_user)):
     
-    # validate date format (DD.MM.YYYY)
-    validate_date_format(new_date_str)
+    # validate date format for the new dates (YYYY-MM-DD)
+    validate_date_format(new_start_date_str)
+    validate_date_format(new_end_date_str)
     
     trip_name = trip_name.capitalize()
     
-    old_date = datetime.strptime(old_date_str, "%Y-%m-%d").date() if old_date_str else None  # changes format because comes from the database
-    new_date = datetime.strptime(new_date_str, "%Y-%m-%d").date() if new_date_str else None
+    destination = destination.capitalize() if destination else None
+    
+    old_start_date = datetime.strptime(old_start_date_str, "%Y-%m-%d").date() if old_start_date_str else None  
+    old_end_date = datetime.strptime(old_end_date_str, "%Y-%m-%d").date() if old_end_date_str else None  
+    new_start_date = datetime.strptime(new_start_date_str, "%Y-%m-%d").date() if new_start_date_str else None
+    new_end_date = datetime.strptime(new_end_date_str, "%Y-%m-%d").date() if new_end_date_str else None
 
-    existing = db.get_trip_by_name_and_date(current_user["id"], trip_name, old_date)
+    existing = db.get_trip_by_name_and_date(current_user["id"], trip_name, old_start_date, old_end_date)
     
     if not existing:
         raise HTTPException(status_code=404, detail="Trip not found")
     
-    db.update_trip(current_user["id"], trip_name, old_date, new_date)
-    return {"trip_name": trip_name, "date": new_date_str}
+    db.update_trip(current_user["id"], trip_name, old_start_date, new_start_date, old_end_date, new_end_date, destination)
+    return {"trip_name": trip_name, 
+            "start_date": new_start_date_str, 
+            "end_date": new_end_date_str,
+            "destination": destination}
     
 @app.delete("/trips/{trip_name}")
 async def delete_trip(trip_name: str, date_str: str | None = None, current_user: dict = Depends(get_current_user)):
@@ -230,7 +264,7 @@ def validate_date_format(date_str: str | None):
 async def get_recommendations(current_user: dict = Depends(get_current_user)):
     # Get user's existing trips to personalize recommendations
     existing_trips = db.get_all_trips(current_user["id"])
-    trip_names = [trip[1] for trip in existing_trips]
+    destinations = [trip[2] for trip in existing_trips]
 
     response = groq_client.chat.completions.create(
         model="llama-3.3-70b-versatile",
@@ -238,7 +272,7 @@ async def get_recommendations(current_user: dict = Depends(get_current_user)):
             {
                 "role": "user",
                 "content": f"""Recommend 6 popular travel destinations similar to user's previous trips.
-                The user has already been to: {trip_names}.
+                The user has already been to: {destinations}.
                 For each destination provide:
                 - City and country
                 - One sentence why it's popular
