@@ -3,26 +3,22 @@ import './TripForm.css';
 
 function TripForm({ onSubmit, initialTrip, onCancel }) {
     const [tripName, setTripName] = useState('');
-    const [date, setDate] = useState('');
-    const [selectedOldDate, setSelectedOldDate] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [destination, setDestinationName] = useState('');
 
     useEffect(() => {
         if (initialTrip) {
-            setTripName(initialTrip.trip_name);
-
-            // If editing and trip has multiple dates, don't preselect a date
-            // User must pick which date to edit from the dropdown
-            if (initialTrip.isEditing) {
-                setDate('');
-                setSelectedOldDate('');
-            } else {
-                // Adding a new trip prefilled with a name (e.g. from recommendations)
-                setDate('');
-            }
+            setTripName(initialTrip.trip_name || '');
+            setDestinationName(initialTrip.destination || '');
+            // pre-fill with the entry's existing dates
+            setStartDate(initialTrip.start_date || '');
+            setEndDate(initialTrip.end_date || '');
         } else {
             setTripName('');
-            setDate('');
-            setSelectedOldDate('');
+            setStartDate('');
+            setEndDate('');
+            setDestinationName('');
         }
     }, [initialTrip]);
 
@@ -32,22 +28,22 @@ function TripForm({ onSubmit, initialTrip, onCancel }) {
             alert('Please enter a trip name');
             return;
         }
-        // Pass selectedOldDate so backend knows which date entry to update
-        onSubmit(tripName, date, selectedOldDate);
+        onSubmit(tripName, startDate, endDate, destination);
         setTripName('');
-        setDate('');
-        setSelectedOldDate('');
+        setStartDate('');
+        setEndDate('');
+        setDestinationName('');
     };
 
     const handleCancel = () => {
         setTripName('');
-        setDate('');
-        setSelectedOldDate('')
+        setStartDate('');
+        setEndDate('');
+        setDestinationName('');
         onCancel();
     };
 
     const isEditing = initialTrip?.isEditing;
-    const hasDates = initialTrip?.dates && initialTrip.dates.length > 0;
 
     return (
         <form className="trip-form" onSubmit={handleSubmit}>
@@ -62,30 +58,34 @@ function TripForm({ onSubmit, initialTrip, onCancel }) {
                 />
             </div>
 
-            {/* Show date picker dropdown when editing a trip with multiple dates */}
-            {isEditing && hasDates && (
-                <div className="form-group">
-                    <label htmlFor="oldDate">Select Date to Edit *</label>
-                    <select
-                        id="oldDate"
-                        value={selectedOldDate}
-                        onChange={(e) => setSelectedOldDate(e.target.value)}
-                    >
-                        <option value="">-- Select a date --</option>
-                        {initialTrip.dates.map((d, index) => (
-                            <option key={index} value={d}>{d}</option>
-                        ))}
-                    </select>
-                </div>
-            )}
+            <div className="form-group">
+                <label htmlFor="startDate">Start Date</label>
+                <input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                />
+            </div>
 
             <div className="form-group">
-                <label htmlFor="date">Date</label>
+                <label htmlFor="endDate">End Date</label>
                 <input
-                    id="date"
+                    id="endDate"
                     type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                />
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="destination">Destination</label>
+                <input
+                    id="destination"
+                    type="text"
+                    value={destination}
+                    onChange={(e) => setDestinationName(e.target.value)}
+                    placeholder="e.g., Paris, Tokyo, New York"
                 />
             </div>
 

@@ -68,11 +68,13 @@ function App() {
     }, [isLoggedIn, currentView]);
 
     // Add new trip
-    const handleAddTrip = async (tripName, date) => {
+    const handleAddTrip = async (tripName, startDate, endDate, destination) => {
         try {
             setError('');
             const params = { trip_name: tripName };
-            if (date) params.date_str = date;
+            if (startDate) params.start_date_str = startDate;
+            if (endDate) params.end_date_str = endDate;
+            if (destination) params.destination = destination;
             
             const token = localStorage.getItem('token');
             await axios.post(`${API_BASE_URL}/trips/`, null, { 
@@ -89,20 +91,24 @@ function App() {
     };
 
     // Update trip
-    const handleUpdateTrip = async (tripName, newDate, oldDate) => {
+    const handleUpdateTrip = async (tripName, newStartDate, newEndDate, newDestination) => {
         try {
             setError('');
-
             const params = {};
-            if(oldDate) params.old_date_str = oldDate;
-            if(newDate) params.new_date_str = newDate;
-            
+
+            // Include old values for identification if they exist
+            if(editingTrip.start_date) params.old_start_date_str = editingTrip.start_date;
+            if(editingTrip.end_date) params.old_end_date_str = editingTrip.end_date;
+
+            // Only include the new values if provided
+            if (newStartDate) params.new_start_date_str = newStartDate;
+            if (newEndDate) params.new_end_date_str = newEndDate;
+            if (newDestination) params.destination = newDestination;
+
             const token = localStorage.getItem('token');
-            await axios.put(`${API_BASE_URL}/trips/${tripName}`, null, { 
+            await axios.put(`${API_BASE_URL}/trips/${tripName}`, null, {
                 params,
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             await fetchTrips();
             setEditingTrip(null);
@@ -113,20 +119,33 @@ function App() {
     };
 
     // Delete trip
-    const handleDeleteTrip = async (tripName, date) => {
-        const message = date 
-            ? `Delete ${date} from "${tripName}"?` 
+    const handleDeleteTrip = async (tripName, entry) => {
+        // Determine if deleting specific record or entire trip
+        const isDeletingRecord = entry && entry.destination;
+
+        const message = isDeletingRecord 
+            ? `Delete ${entry.start_date} - ${entry.end_date} to ${entry.destination}"?` 
             : `Delete all dates for "${tripName}"?`;
         
         if (!window.confirm(message)) return;
         
         try {
             setError('');
-            const params = {};
-            if (date) params.date_str = date;  // only pass date if deleting specific date
-
             const token = localStorage.getItem('token');
-            await axios.delete(`${API_BASE_URL}/trips/${tripName}`, {
+            let url = `${API_BASE_URL}/trips/${tripName}`;
+            let params = {};
+
+            // if deleting a specific record
+            if(isDeletingRecord){
+                url += '/record';
+                params = {
+                    destination: entry.destination,
+                    start_date: entry.start_date, 
+                    end_date: entry.end_date
+                };
+            }
+            
+            await axios.delete(url, {
                 params,
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -222,7 +241,7 @@ function App() {
                 onLogout={handleLogout}
                 onPlanTrip={(city) => {
                     setShowRecommendations(false);
-                    setPrefilledTrip({ trip_name: city, date: '' });
+                    setPrefilledTrip({ destination: city, date: '' });
                 }}
             />
         );
@@ -267,7 +286,11 @@ function App() {
                             <TripList 
                                 trips={trips}
                                 onDelete={handleDeleteTrip}
-                                onEdit={(trip) => setEditingTrip({ ...trip, isEditing: true })}
+                                onEdit={(tripName, entry) => setEditingTrip({
+                                    trip_name: tripName,
+                                    ...entry,
+                                    isEditing: true
+                                })}
                             />
                         )}
                     </div>

@@ -2,12 +2,16 @@ from datetime import datetime
 from sqlalchemy import create_engine, MetaData, Table, Column, String, Date, DateTime, Boolean, Integer, ForeignKey
 
 def define_trips_table(meta):
-    return Table("trips",
+    return Table(
+            "trips",
             meta,
             Column('id', Integer, primary_key=True, autoincrement=True),
             Column('name', String), 
-            Column('date', Date),
-            Column('user_id', Integer, ForeignKey('users.id'), nullable=False))
+            Column('start_date', Date, nullable=True),
+            Column('end_date', Date, nullable=True),
+            Column('destination', String),
+            Column('user_id', Integer, ForeignKey('users.id'), nullable=False),
+            Column('created_at', Date))
             
             
 def define_users_table(meta):
