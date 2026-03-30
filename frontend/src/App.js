@@ -94,13 +94,16 @@ function App() {
     const handleUpdateTrip = async (tripName, newStartDate, newEndDate, newDestination) => {
         try {
             setError('');
-            const params = {
-                old_start_date_str: editingTrip.start_date || null,
-                old_end_date_str: editingTrip.end_date || null,
-                new_start_date_str: newStartDate || null,
-                new_end_date_str: newEndDate || null,
-                destination: newDestination || null
-            };
+            const params = {};
+
+            // Include old values for identification if they exist
+            if(editingTrip.start_date) params.old_start_date_str = editingTrip.start_date;
+            if(editingTrip.end_date) params.old_end_date_str = editingTrip.end_date;
+
+            // Only include the new values if provided
+            if (newStartDate) params.new_start_date_str = newStartDate;
+            if (newEndDate) params.new_end_date_str = newEndDate;
+            if (newDestination) params.destination = newDestination;
 
             const token = localStorage.getItem('token');
             await axios.put(`${API_BASE_URL}/trips/${tripName}`, null, {
@@ -238,7 +241,7 @@ function App() {
                 onLogout={handleLogout}
                 onPlanTrip={(city) => {
                     setShowRecommendations(false);
-                    setPrefilledTrip({ trip_name: city, date: '' });
+                    setPrefilledTrip({ destination: city, date: '' });
                 }}
             />
         );

@@ -204,10 +204,10 @@ async def put_trip(trip_name: str,
     
     destination = destination.capitalize() if destination else None
     
-    old_start_date = datetime.strptime(old_start_date_str, "%Y-%m-%d").date() if old_start_date_str else None  
-    old_end_date = datetime.strptime(old_end_date_str, "%Y-%m-%d").date() if old_end_date_str else None  
-    new_start_date = datetime.strptime(new_start_date_str, "%Y-%m-%d").date() if new_start_date_str else None
-    new_end_date = datetime.strptime(new_end_date_str, "%Y-%m-%d").date() if new_end_date_str else None
+    old_start_date = datetime.strptime(old_start_date_str, "%Y-%m-%d").date() if old_start_date_str and old_start_date_str != 'None' else None
+    old_end_date = datetime.strptime(old_end_date_str, "%Y-%m-%d").date() if old_end_date_str and old_end_date_str != 'None' else None
+    new_start_date = datetime.strptime(new_start_date_str, "%Y-%m-%d").date() if new_start_date_str and new_start_date_str != 'None' else None
+    new_end_date = datetime.strptime(new_end_date_str, "%Y-%m-%d").date() if new_end_date_str and new_end_date_str != 'None' else None
 
     existing = db.get_trip_by_name_and_date(current_user["id"], trip_name, old_start_date, old_end_date)
     
@@ -231,16 +231,16 @@ async def delete_trip(trip_name: str, start_date_str: str | None = None, end_dat
     return {"message": f"{trip_name} and all its dates deleted"}
 
 @app.delete("/trips/{trip_name}/record")
-async def delete_trip_by_destination_and_date(trip_name: str, destination: str, start_date_str: str | None = None, end_date_str: str | None = None, current_user: dict = Depends(get_current_user)):
+async def delete_trip_by_destination_and_date(trip_name: str, destination: str, start_date: str | None = None, end_date: str | None = None, current_user: dict = Depends(get_current_user)):
     # if all fields matching delete this record
     trip_name = trip_name.capitalize()
-    
-    start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None  
-    end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
-    num_deleted = db.delete_trip_by_name_date_destination(trip_name, start_date, end_date, destination, current_user["id"])
+
+    start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date and start_date != 'None' else None
+    end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date and end_date != 'None' else None
+    num_deleted = db.delete_trip_by_name_date_destination(trip_name, start_date_obj, end_date_obj, destination, current_user["id"])
     if num_deleted == 0:
-        raise HTTPException(status_code=404, detail="Trip not found") 
-    return {"message": f"{trip_name}: {destination}, {start_date_str} -> {end_date_str} deleted"}
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return {"message": f"{trip_name}: {destination}, {start_date} -> {end_date} deleted"}
 
 def validate_date_format(date_str: str | None):
     if date_str:
@@ -257,15 +257,13 @@ def validate_date_format(date_str: str | None):
 async def get_recommendations(current_user: dict = Depends(get_current_user)):
     # Get user's existing trips to personalize recommendations
     existing_trips = db.get_all_trips(current_user["id"])
-    destinations = [trip[2] for trip in existing_trips]
-
-    response = groq_client.chat.completions.create(
+    if len(existing_trips) == 0:
+        response = groq_client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
             {
                 "role": "user",
-                "content": f"""Recommend 6 popular travel destinations similar to user's previous trips.
-                The user has already been to: {destinations}.
+                "content": f"""Recommend 6 most popular travel destinations.
                 For each destination provide:
                 - City and country
                 - One sentence why it's popular
@@ -274,6 +272,25 @@ async def get_recommendations(current_user: dict = Depends(get_current_user)):
                 [{{"city": "...", "country": "...", "reason": "...", "best_time": "..."}}]"""
             }
         ]
+    )
+    else:
+        destinations = [trip[4] for trip in existing_trips]
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""Recommend 6 popular travel destinations similar to user's previous trips.
+                    The user has already been to: {destinations}.
+                    For each destination provide:
+                    - City and country
+                    - One sentence why it's popular
+                    - Best time to visit
+                    Return as JSON array only, no extra text, no markdown:
+                    [{{"city": "...", "country": "...", "reason": "...", "best_time": "..."}}]"""
+                }
+            ]
     )
 
     recommendations = json.loads(response.choices[0].message.content)
