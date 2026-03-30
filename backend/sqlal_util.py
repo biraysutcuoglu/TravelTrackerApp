@@ -134,11 +134,13 @@ class SQLAlUtil:
             conn.commit()
             return result.rowcount  # Returns number of rows deleted
         
-    def delete_trip_by_name_and_date(self, trip_name: str, date, user_id: int):
+    def delete_trip_by_name_date_destination(self, trip_name: str, start_date: date, end_date: date, destination: str, user_id: int):
         with self.engine.connect() as conn:
             query = delete(self.trips).where(
                 self.trips.c.name.ilike(trip_name),
-                self.trips.c.date == date,
+                self.trips.c.start_date == start_date,
+                self.trips.c.end_date == end_date,
+                self.trips.c.destination == destination,
                 self.trips.c.user_id == user_id
             )
             result = conn.execute(query)

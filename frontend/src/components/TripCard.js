@@ -9,9 +9,9 @@ function TripCard({ trip, onDelete, onEdit }) {
             <div className="trip-info">
                 <div className="trip-header">
                     <h3>{trip.trip_name}</h3>
-                    <button 
+                    <button
                         className="btn-action btn-delete"
-                        onClick={() => onDelete(trip.trip_name, null, null)}
+                        onClick={() => onDelete(trip.trip_name, null)}
                         title="Delete entire trip"
                     >
                         🗑️
@@ -35,7 +35,7 @@ function TripCard({ trip, onDelete, onEdit }) {
                                     </button>
                                     <button
                                         className="btn-action btn-delete-date"
-                                        onClick={() => onDelete(trip.trip_name, entry.start_date, entry.end_date)}
+                                        onClick={() => onDelete(trip.trip_name, entry)}
                                         title="Delete this entry"
                                     >
                                         🗑️

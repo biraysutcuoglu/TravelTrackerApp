@@ -221,33 +221,26 @@ async def put_trip(trip_name: str,
             "destination": destination}
     
 @app.delete("/trips/{trip_name}")
-async def delete_trip(trip_name: str, date_str: str | None = None, current_user: dict = Depends(get_current_user)):
+async def delete_trip(trip_name: str, start_date_str: str | None = None, end_date_str: str | None = None, current_user: dict = Depends(get_current_user)):
+    # Deletes all records with this given trip name
     trip_name = trip_name.capitalize()
     
-    if date_str:
-        if date_str == "None":
-            num_deleted = db.delete_trip_by_name_and_date(trip_name, None, current_user["id"])
-        else:
-            date = datetime.strptime(date_str, "%Y-%m-%d").date()
-            num_deleted = db.delete_trip_by_name_and_date(trip_name, date, current_user["id"])
-        
-        if num_deleted == 0:
-            raise HTTPException(status_code=404, detail="No trips found")
-        
-        # Check if any dates remain for this trip
-        remaining = db.get_trip_by_name(current_user["id"], trip_name)
-        if not remaining:
-            return {"message": f"{trip_name} has no more dates, trip fully deleted"}
-        
-        return {"message": f"Date {date_str} deleted from {trip_name}"}
+    num_deleted = db.delete_trip_by_name(trip_name, current_user["id"])
+    if num_deleted == 0:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return {"message": f"{trip_name} and all its dates deleted"}
 
-    else:
-        # No date provided, delete all dates for this trip
-        num_deleted = db.delete_trip_by_name(trip_name, current_user["id"])
-        if num_deleted == 0:
-            raise HTTPException(status_code=404, detail="Trip not found")
-        return {"message": f"{trip_name} and all its dates deleted"}
-             
+@app.delete("/trips/{trip_name}/record")
+async def delete_trip_by_destination_and_date(trip_name: str, destination: str, start_date_str: str | None = None, end_date_str: str | None = None, current_user: dict = Depends(get_current_user)):
+    # if all fields matching delete this record
+    trip_name = trip_name.capitalize()
+    
+    start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None  
+    end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
+    num_deleted = db.delete_trip_by_name_date_destination(trip_name, start_date, end_date, destination, current_user["id"])
+    if num_deleted == 0:
+        raise HTTPException(status_code=404, detail="Trip not found") 
+    return {"message": f"{trip_name}: {destination}, {start_date_str} -> {end_date_str} deleted"}
 
 def validate_date_format(date_str: str | None):
     if date_str:

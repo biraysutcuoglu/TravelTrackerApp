@@ -116,20 +116,33 @@ function App() {
     };
 
     // Delete trip
-    const handleDeleteTrip = async (tripName, date) => {
-        const message = date 
-            ? `Delete ${date} from "${tripName}"?` 
+    const handleDeleteTrip = async (tripName, entry) => {
+        // Determine if deleting specific record or entire trip
+        const isDeletingRecord = entry && entry.destination;
+
+        const message = isDeletingRecord 
+            ? `Delete ${entry.start_date} - ${entry.end_date} to ${entry.destination}"?` 
             : `Delete all dates for "${tripName}"?`;
         
         if (!window.confirm(message)) return;
         
         try {
             setError('');
-            const params = {};
-            if (date) params.date_str = date;  // only pass date if deleting specific date
-
             const token = localStorage.getItem('token');
-            await axios.delete(`${API_BASE_URL}/trips/${tripName}`, {
+            let url = `${API_BASE_URL}/trips/${tripName}`;
+            let params = {};
+
+            // if deleting a specific record
+            if(isDeletingRecord){
+                url += '/record';
+                params = {
+                    destination: entry.destination,
+                    start_date: entry.start_date, 
+                    end_date: entry.end_date
+                };
+            }
+            
+            await axios.delete(url, {
                 params,
                 headers: { 'Authorization': `Bearer ${token}` }
             });
