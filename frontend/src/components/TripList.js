@@ -2,7 +2,7 @@ import React from 'react';
 import TripCard from './TripCard';
 import './TripList.css';
 
-function TripList({ trips, onDelete, onEdit }) {
+function TripList({ trips, onDelete, onEdit, onPlanItinerary }) {
     return (
         <div className="trip-list">
             {trips.map((trip, index) => (
@@ -11,6 +11,7 @@ function TripList({ trips, onDelete, onEdit }) {
                     trip={trip}
                     onDelete={onDelete}
                     onEdit={onEdit}
+                    onPlanItinerary={onPlanItinerary}
                 />
             ))}
         </div>

@@ -37,6 +37,14 @@ class UserResponse(BaseModel):
     username: str
     email: str
     is_active: bool
+
+class ItineraryRequest(BaseModel):
+    trip_name: str | None = None
+    destination: str | None = None
+    days: int | None = None
+    budget: float | None = None
+    currency: str | None = None
+    keyword: str | None = None
     
     
 app = FastAPI()
@@ -291,9 +299,114 @@ async def get_recommendations(current_user: dict = Depends(get_current_user)):
                     [{{"city": "...", "country": "...", "reason": "...", "best_time": "..."}}]"""
                 }
             ]
-    )
+        )
 
     recommendations = json.loads(response.choices[0].message.content)
     return recommendations
 
+# -------------- Itinerary Recommendations using Groq ------------------
+@app.post("/itinerary")
+async def create_itinerary(itinerary: ItineraryRequest, current_user: dict = Depends(get_current_user)):
+    """
+    This endpoint receives the user's itinerary preferences and call the AI service 
+    to generate a plan.
+    """
 
+    # Basic validation
+    if itinerary.days is not None and itinerary.days <= 0:
+        raise HTTPException(status_code=400, detail="Days must be positive")
+
+    # Capitalize destination if present
+    if itinerary.destination:
+        itinerary.destination = itinerary.destination.capitalize()
+
+    # If days not provided, default to 1
+    days = itinerary.days or 1
+
+    # Build a stronger JSON-only prompt that includes an explicit example
+    prompt = f"""
+    You are an assistant that MUST return ONLY valid JSON matching the schema described.
+    Do NOT include any explanatory text, markdown, or commentary.
+
+    Trip details:
+    - destination: {itinerary.destination}
+    - trip_name: {itinerary.trip_name or ''}
+    - days: {days}
+    - keyword/theme: {itinerary.keyword or ''}
+    - budget: {itinerary.budget or ''} {itinerary.currency or ''}
+
+    Return a single JSON object exactly matching this schema (example provided):
+    {{
+        "trip_name": "My Trip",
+        "destination": "Paris",
+        "days": 3,
+        "itinerary": [
+            {{
+                "day": 1,
+                "date": null,
+                "summary": "Arrive and explore central Paris",
+                "activities": ["Visit the Louvre", "Walk along the Seine"],
+                "meals": ["Breakfast", "Lunch suggestion", "Dinner suggestion"],
+                "accommodation": null,
+                "transport": ["Walk", "Metro"]
+            }},
+            {{ "day": 2, "date": null, "summary": "...", "activities": ["..."], "meals": ["..."], "accommodation": null, "transport": ["..."] }},
+            {{ "day": 3, "date": null, "summary": "...", "activities": ["..."], "meals": ["..."], "accommodation": null, "transport": ["..."] }}
+        ]
+    }}
+
+    Generate {days} day objects tailored to the keyword and budget. Return ONLY the JSON object.
+    """
+
+    try:
+        ai_resp = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = ai_resp.choices[0].message.content
+
+        # First try to parse the whole response as JSON
+        try:
+            itinerary_json = json.loads(content)
+            return itinerary_json
+        except Exception:
+            # If AI returned non-parseable JSON, try extracting a JSON substring
+            # Common failure mode: model adds text before/after the JSON
+            print("AI returned non-JSON content for itinerary (attempting extraction):", content)
+            m = re.search(r'(\{.*\}|\[.*\])', content, re.DOTALL)
+            if m:
+                candidate = m.group(1)
+                try:
+                    itinerary_json = json.loads(candidate)
+                    return itinerary_json
+                except Exception:
+                    print("Extracted substring still not valid JSON; candidate:\n", candidate)
+    except Exception as e:
+        # AI call failed; log and fall back
+        print("groq_client error while generating itinerary:", e)
+
+    # Fallback deterministic generator: produce simple per-day structure
+    def make_day(i):
+        return {
+            "day": i,
+            "date": None,
+            "summary": f"{itinerary.keyword or 'Explore'} highlights in {itinerary.destination}",
+            "activities": [
+                f"Morning: {itinerary.keyword or 'Sightseeing'} in central {itinerary.destination}",
+                f"Afternoon: local experience or museum",
+                f"Evening: recommended restaurant or market"
+            ],
+            "meals": ["Breakfast included", "Lunch suggestion", "Dinner suggestion"],
+            "accommodation": None,
+            "transport": ["Walk", "Public transit"]
+        }
+
+    itinerary_obj = {
+        "trip_name": itinerary.trip_name,
+        "destination": itinerary.destination,
+        "days": days,
+        "itinerary": [make_day(i) for i in range(1, days + 1)]
+    }
+
+    return itinerary_obj

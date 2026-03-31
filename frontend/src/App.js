@@ -6,6 +6,7 @@ import TripForm from './components/TripForm';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import RecommendationsPage from './components/RecommendationsPage';
+import ItineraryPlannerPage from './components/ItineraryPlannerPage';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -17,10 +18,17 @@ function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentView, setCurrentView] = useState('login'); // 'login', 'signup', or 'trips'
     const [username, setUsername] = useState('');
+    
     const [recommendations, setRecommendations] = useState([]); 
     const [loadingRecs, setLoadingRecs] = useState(false);    
     const [showRecommendations, setShowRecommendations] = useState(false);
+
     const [prefilledTrip, setPrefilledTrip] = useState(null);
+
+    const [itineraryPlans, setItineraryPlans] = useState([]);
+    const [loadingItineraryPlanner, setLoadingItineraryPlanner] = useState(false);
+    const [showItineraryPlanner, setShowItineraryPlanner] = useState(false);
+    const [selectedItinerary, setSelectedItinerary] = useState(null);
 
     // Check if user is already logged in
     useEffect(() => {
@@ -174,6 +182,29 @@ function App() {
         }
     };
 
+    const fetchItineraryPlanner = async () => {
+        setLoadingItineraryPlanner(true);
+        setError('');
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/recommendations`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setItineraryPlans(response.data);
+            setShowItineraryPlanner(true);
+        }catch (err){
+            setError('Failed to fetch itinerary planner');
+            console.error(err);
+        }finally{
+            setLoadingItineraryPlanner(false);
+        }
+    }
+
+    const handlePlanItinerary = (tripName, entry, days) => {
+        setSelectedItinerary({ tripName, entry, days });
+        setShowItineraryPlanner(true);
+    };
+
     // Handle login success
     const handleLoginSuccess = () => {
         const storedUsername = localStorage.getItem('username');
@@ -247,6 +278,19 @@ function App() {
         );
     }
 
+    if (showItineraryPlanner){
+        return (
+            <ItineraryPlannerPage
+                tripName={selectedItinerary?.tripName}
+                entry={selectedItinerary?.entry}
+                initialDays={selectedItinerary?.days}
+                username={username}
+                onBack={() => setShowItineraryPlanner(false)}
+                onLogout={handleLogout}
+            />
+        )
+    }
+
     return (
         <div className="App">
             <header className="App-header">
@@ -283,7 +327,7 @@ function App() {
                         ) : trips.length === 0 ? (
                             <p className="empty-state">No trips yet. Add one to get started!</p>
                         ) : (
-                            <TripList 
+                            <TripList
                                 trips={trips}
                                 onDelete={handleDeleteTrip}
                                 onEdit={(tripName, entry) => setEditingTrip({
@@ -291,10 +335,10 @@ function App() {
                                     ...entry,
                                     isEditing: true
                                 })}
+                                onPlanItinerary={handlePlanItinerary}
                             />
                         )}
                     </div>
-
                     <div className="recommendations-section">
                         <button
                             onClick={fetchRecommendations}

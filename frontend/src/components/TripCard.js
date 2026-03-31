@@ -1,8 +1,17 @@
 import React from 'react';
 import './TripCard.css';
 
-function TripCard({ trip, onDelete, onEdit }) {
+function TripCard({ trip, onDelete, onEdit, onPlanItinerary }) {
     const hasEntries = trip.entries && trip.entries.length > 0;
+
+    const computeDays = (start, end) => {
+        if (!start || !end) return null;
+        const s = new Date(start);
+        const e = new Date(end);
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const diff = Math.round((e - s) / msPerDay) + 1; // inclusive
+        return diff > 0 ? diff : null;
+    };
 
     return (
         <div className="trip-card">
@@ -39,6 +48,13 @@ function TripCard({ trip, onDelete, onEdit }) {
                                         title="Delete this entry"
                                     >
                                         🗑️
+                                    </button>
+                                    <button
+                                        className="btn-action btn-plan-itinerary"
+                                        onClick={() => onPlanItinerary(trip.trip_name, entry, computeDays(entry.start_date, entry.end_date))}
+                                        title="Plan itinerary"
+                                    >
+                                        🗒️
                                     </button>
                                 </div>
                             </div>
