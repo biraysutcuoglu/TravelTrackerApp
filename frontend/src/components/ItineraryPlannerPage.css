@@ -35,6 +35,16 @@
     color: #333;
 }
 
+.form-group input,
+.form-group select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+}
+
 .budget-input-group {
     display: flex;
     gap: 10px;
