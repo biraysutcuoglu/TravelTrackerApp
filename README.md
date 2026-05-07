@@ -13,10 +13,16 @@ A full-stack travel management application built with FastAPI (backend) and Reac
 - "Plan a Trip" button on recommendation cards to pre-fill the trip form
 
 ## Planned Features
+- Add itineraries 
+        - Itinerary Planner with Groq
+                - Select trips from your trips
+                - It will open a screen 
+                        - Plan my trip (groq)
+                        - Plan your trip 
+
 - Show destinations within a given distance (select from map)
 - Caching for recommendations (if same destination searched)
 - Move configurations to a config file
-- Bucketlist vs visited trips distinction
 
 - Upload Photo → Detect Location (use google vision API)
 - Auto-create trip
@@ -124,7 +130,7 @@ Extracts user ID → fetches user → returns protected data
 | Column | Type | Notes |
 |---|---|---|
 | id | Integer | Primary key, autoincrement |
-| name | String | Primary key |
+| name | String | Unique |
 | start_date | Date | Optional |
 | end_date | Date | Optional |
 | destination | String | Optional |
@@ -138,7 +144,7 @@ Extracts user ID → fetches user → returns protected data
 | trip_id | Integer | Foreign key → trips.id |
 | raw_json | JSON | Optional |
 | summary | String | Optional |
-| budget | String | Optional |
+| budget | Double | Optional |
 | created_at | Date | Auto timestamp |
 ---
 
@@ -202,7 +208,7 @@ Visit `http://localhost:8000/docs` to explore and test the API interactively.
 - `axios` - HTTP client
 
 ### TODO
-- update recommendations
+
 
 
 

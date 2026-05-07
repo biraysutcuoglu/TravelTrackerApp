@@ -79,6 +79,18 @@ function App() {
     const handleAddTrip = async (tripName, startDate, endDate, destination) => {
         try {
             setError('');
+
+            //compare dates
+            if(startDate && endDate){
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+
+                if(start > end){
+                    setError('Start date can not be after end date');
+                    return;
+                }
+            }
+
             const params = { trip_name: tripName };
             if (startDate) params.start_date_str = startDate;
             if (endDate) params.end_date_str = endDate;
